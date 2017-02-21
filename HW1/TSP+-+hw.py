@@ -301,15 +301,14 @@ for i in range(0,100):
     TotalCosts.append(TotalCost)
     PathsTraversed.append(printPathTraversed(bestFinalNode, False))
 
-# Please uncomment following for the graphs
-# drawPlotsI()
+
 
 # plot
 def drawPlotsI():
     plt.xlabel('Number of Cities')
     plt.ylabel('Time in Seconds')
     plt.scatter(nodes_size,time_taken)
-
+    plt.show()
 
     # In[7]:
 
@@ -317,7 +316,7 @@ def drawPlotsI():
     plt.xlabel('Number of Cities')
     plt.ylabel('Number of Nodes Expanded')
     plt.scatter(nodes_size,nodes_expanded)
-
+    plt.show()
 
     # In[8]:
 
@@ -326,8 +325,9 @@ def drawPlotsI():
     plt.ylabel('Number of Nodes Generated')
     plt.scatter(nodes_size,nodes_generated)
 
-
-# In[9]:
+    plt.show()
+# Please uncomment following for the graphs
+# drawPlotsI()
 
 # Testing Example TSP Algorithm
 ExamplestartNode = 1
@@ -630,8 +630,6 @@ for i in range(0,100):
 
 print "THE INADMISSIBLE HEURISTIC WAS UNABLE TO FIND SIMILAR SOLUTION IN %d CASES OUT OF 100" %(FailedToFindOptimalSolutions)
 
-# Please uncomment for heuristic Plots
-# inadmissibleHeuristicPlots()
 
 def inadmissibleHeuristicPlots():
     # plot
@@ -654,4 +652,6 @@ def inadmissibleHeuristicPlots():
     plt.xlabel('Number of Cities')
     plt.ylabel('Nodes Generated For Inadmissible Heuristic')
     plt.scatter(nodes_size,InAdmissibleHeuristicnodes_generated)
+# Please uncomment for heuristic Plots
+# inadmissibleHeuristicPlots()
 
