@@ -713,12 +713,16 @@ def solveSudokuUsingWATERFALL(filename):
 def countlister(filename):
     puzzle = solveSudokuUsingSimplebackTrack(filename)
     puzzle.printBoard()
+    print puzzle.reachedGoal()
     print "GUESSES FOR SIMPLE BACKTRACK = ",count
     puzzle = solveSudokuUsingMRV(filename)
+    print puzzle.reachedGoal()
     print "GUESSES FOR MRV = ",count
     puzzle = solveSudokuUsingAC3(filename)
+    print puzzle.reachedGoal()
     print "GUESSES FOR AC3 = ",count
     puzzle = solveSudokuUsingWATERFALL(filename)
+    print puzzle.reachedGoal()
     print "GUESSES FOR WATERFALL = ",count
 filename=""
 numbers=["puzzle/puz-001.txt","puzzle/puz-002.txt","puzzle/puz-010.txt","puzzle/puz-015.txt","puzzle/puz-025.txt","puzzle/puz-026.txt","puzzle/puz-048.txt","puzzle/puz-051.txt","puzzle/puz-062.txt","puzzle/puz-076.txt","puzzle/puz-081.txt","puzzle/puz-082.txt","puzzle/puz-090.txt","puzzle/puz-095.txt","puzzle/puz-099.txt","puzzle/puz-100.txt"]
