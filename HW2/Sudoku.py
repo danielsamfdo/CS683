@@ -1,4 +1,6 @@
 import copy
+
+# Function : Takes a file name and returns a board
 def returnBoard(filename, rows, columns):
     with open(filename) as f:
         content = f.readlines()
@@ -13,11 +15,12 @@ def returnBoard(filename, rows, columns):
                 value = int(content[row][column])
             currentRow.append(value)
         board.append(currentRow)
-        # print currentRow
     return board
     
     
 class SudokuPuzzle:
+
+    # Unassigned Variable have a domain associated with it which can be found in the self.variableValuesAvailable[nRow][nCol], Assigned variables are discovered if the board[nRow][nRow]!=0
     def __init__(self, possibleValues, filename, board=None, initialize=True, rows=9, columns=9, boxRows=3, boxColumns=3):
         if(initialize):
             self.variableSize = rows * columns
@@ -32,6 +35,7 @@ class SudokuPuzzle:
                 self.board = board
             self.updateDomainVariables()
             
+    # CHECKS the row constraints for a given row.
     def rowAllDiff(self, row):
         dictV = {}
         for column in range(self.columns):
@@ -42,6 +46,7 @@ class SudokuPuzzle:
                     dictV[self.board[row][column]] = 1
         return True
     
+    # CHECKS the Column constraints for a given Column.
     def columnAllDiff(self, column):
         dictV = {}
         for row in range(self.rows):
@@ -52,6 +57,23 @@ class SudokuPuzzle:
                     dictV[self.board[row][column]] = 1
         return True
     
+    # CHECKS the Box constraints for a given Column.                  
+    def boxAllDiff(self, r, c):
+        dictV = {}
+        boxRowStart = self.boxRows*(r/self.boxRows)
+        boxColumnStart = self.boxColumns*(c/self.boxColumns)
+        boxRowEnd = boxRowStart + self.boxRows
+        boxColumnEnd = boxColumnStart + self.boxColumns
+        for row in range(boxRowStart, boxRowEnd):
+            for column in range(boxColumnStart, boxColumnEnd):
+                if(self.board[row][column] in dictV):
+                    return False
+                else:
+                    if(self.board[row][column]!=0):
+                        dictV[self.board[row][column]] = 1
+        return True
+
+    # Update the Domain After Assignment - Currently unused Function
     def updateDomainAfterAssignment(self, rcIndex, value):
         neighbours = self.findNeighbours(rcIndex)
         for neighbour in neighbours:
@@ -61,6 +83,8 @@ class SudokuPuzzle:
                     self.variableValuesAvailable[nRow][nCol].remove(value)
         
     
+    # This is a minor version of Technique 1.3 in http://www.su-doku.net/tech.php
+    # we try to remove values from domains of other variables. Say in a given box, we have in a particular column we have two unassigned variables and both have a domain of \({1,6}\), then we can remove 1 and 6 from the domain of the unassigned variables in that particular column excluding the ones in the box. The same can be done for removal of values from domain of  unassigned variables in a row, if two unassigned variables in a given row in a box have the same domain. 
     def boxRemoveColumnAndRowValues(self):
         boxrowstart=[0,3,6]
         boxcolstart=[0,3,6]
@@ -76,12 +100,12 @@ class SudokuPuzzle:
                             setValues = copy.deepcopy(self.variableValuesAvailable[i][j])
                             setValues = frozenset(setValues)
                             if(setValues not in BoxMap):
-                                
                                 BoxMap[setValues] = [(i,j)]
                             else:
                                 BoxMap[setValues].append((i,j))
                 for key in BoxMap:
                     if(len(BoxMap[key]) == len(key) and len(key)==2):
+                        # If there are two unassigned variables that take on exactly the same domain values and its size is two, we try to remove it(domain values) from either the interacting row/ column. 
                         r1,c1 = BoxMap[key][0]
                         r2,c2 = BoxMap[key][1]
                         rowOnly = False
@@ -95,31 +119,18 @@ class SudokuPuzzle:
                             for neighbour in neighbours:
                                 nRow, nCol = neighbour
                                 if(self.board[nRow][nCol]==0 and (neighbour not in IndicesOfBox)):
+                                    # Neighbour should be in the row if rowOnly is True
                                     if(rowOnly and nRow == r1):
                                         for value in key:
                                             if(value in self.variableValuesAvailable[nRow][nCol]):
                                                 self.variableValuesAvailable[nRow][nCol].remove(value)
-                                    elif(colOnly and nCol == c1):
+                                    elif(colOnly and nCol == c1): 
                                         for value in key:
                                             if(value in self.variableValuesAvailable[nRow][nCol]):
                                                 self.variableValuesAvailable[nRow][nCol].remove(value)
-                
-    def boxAllDiff(self, r, c):
-        
-        dictV = {}
-        boxRowStart = self.boxRows*(r/self.boxRows)
-        boxColumnStart = self.boxColumns*(c/self.boxColumns)
-        boxRowEnd = boxRowStart + self.boxRows
-        boxColumnEnd = boxColumnStart + self.boxColumns
-        for row in range(boxRowStart, boxRowEnd):
-            for column in range(boxColumnStart, boxColumnEnd):
-                if(self.board[row][column] in dictV):
-                    return False
-                else:
-                    if(self.board[row][column]!=0):
-                        dictV[self.board[row][column]] = 1
-        return True
+
     
+    # Function to check all the constraints based on the value that was currently assigned.
     def checkConstraints(self, row, column):
         toCheckVal = self.board[row][column]
         return self.rowAllDiff(row) and self.columnAllDiff(column) and self.boxAllDiff(row, column)
@@ -179,7 +190,7 @@ class SudokuPuzzle:
                         
                         
    
-        
+    # Function to check if it reached the GOAL
     def reachedGoal(self):
         for row in range(self.rows):
             for column in range(self.columns):
@@ -193,13 +204,19 @@ class SudokuPuzzle:
                     return None
         return True
     
+    # Function to assign board values and update domain variables
     def assignment(self, row, column, value):
         self.board[row][column] = value
-        self.updateDomainVariables()
+        rcIndex = (row,column)
+        self.updateDomainAfterAssignment(rcIndex, value)
+        # self.updateDomainVariables()
     
+    # Function specific to back track to assign board values and it doesn't update domain variables
     def backtrackAssignment(self, row, column, value):
         self.board[row][column] = value
         
+    # Function to update the Domain Variables for each unassigned variable
+    # Unassigned Variable have a domain associated with it which can be found in the self.variableValuesAvailable[nRow][nCol], Assigned variables are discovered if the board[nRow][nRow]!=0
     def updateDomainVariables(self):
         domain = {}
         for value in self.possibleValues:
@@ -237,6 +254,7 @@ class SudokuPuzzle:
         self.columnValuesAvailable = columnAvailableValues
         return variableDomain, boxAvailableValues, rowAvailableValues, columnAvailableValues
         
+    # given a row column position on board, find out all the values that the position can take on.
     def findPositionsPossibleValues(self, row, column, boxAvailableValues, rowAvailableValues, columnAvailableValues):
         BoxIndex = ((3*(row/3))+(column/3))
         boxHash = boxAvailableValues[BoxIndex]
@@ -272,7 +290,7 @@ class SudokuPuzzle:
         domLength = 0.0;
         for row in range(self.rows):
             for column in range(self.columns):
-                if(self.board[row][column]==0):
+                if(self.board[row][column]==0): # IF a value is unassigned , board[row][column] = 0 & self.variableValuesAvailable[row][column] is a set of available values it can take on.
                     domLength += len(self.variableValuesAvailable[row][column])
                     vCnt += 1
         return domLength/vCnt;
@@ -289,6 +307,9 @@ class SudokuPuzzle:
                     return False
         return False
     
+    # Function to do the following
+    # The First Easy Tactic Would be that we figure out the entire domain and the values a variable can take given its neighbours values. Once we know what values a variable can take based on its neighbours, we try to assign values on the board. Then we make assign to the variables whose domain size is 1, if present ie, when the variable has only one value in its domain, we assign it.
+    # Once assignment is made, the next move would be to remove the assigned value from the domain of the neighbours. We repeat this process till there is no more variable having a single sized domain.
     def updateBoardAndDomainValues(self):
         for row in range(self.rows):
             for column in range(self.columns):
@@ -315,18 +336,21 @@ class SudokuPuzzle:
             varValuesAvailbleForXi = [self.board[row][column]]
         else:
             varValuesAvailbleForXi = copy.deepcopy(self.variableValuesAvailable[row][column])
-
+        # ASSIGNED VARIABLE
         if((self.board[otherRow][otherColumn])!=0):
             varValuesAvailbleForXj = [self.board[otherRow][otherColumn]]
         else:
+            # UNASSIGNED VARIABLE
             varValuesAvailbleForXj = copy.deepcopy(self.variableValuesAvailable[otherRow][otherColumn]) 
     
         for valueAvailableForXi in varValuesAvailbleForXi:
             satisfiedValue = False
             
             for otherValueAvailableForXj in varValuesAvailbleForXj:
+                # THERE HAS TO BE SOME OTHER VALUE IN X_J TO SATISFY THE CONSTRAINT, IF THERE IS ATLEAST ONE OTHER VALUE IT SATISFIES THE CONSTRAINT
                 if(otherValueAvailableForXj!=valueAvailableForXi):
                     satisfiedValue = True
+            # IF THERE IS NO VALUE THAT SATISFIES THE CONSTRAINT, we REVISE it.
             if(satisfiedValue == False):
                 self.variableValuesAvailable[row][column].remove(valueAvailableForXi)
                 revised = True
@@ -361,6 +385,7 @@ class SudokuPuzzle:
         
         return Constraints 
     
+    # FUNCTION : USED FOR FINDING OUT ALL THE CONSTRAINTS OF THE BOX
     def boxValueCombinations(self, r, c):
         boxVariables = []
         boxRowStart = self.boxRows*(r/self.boxRows)
@@ -372,6 +397,7 @@ class SudokuPuzzle:
                 boxVariables.append((row, column))
         return itertools.combinations(boxVariables, 2)
 
+    # FUNCTION : Return list of a rdInd(r,c) neighbours
     def findNeighbours(self, rcInd):
         r,c = rcInd
         Neighbours = set()
@@ -388,8 +414,13 @@ class SudokuPuzzle:
             for column in range(boxColumnStart, boxColumnEnd):
                 Neighbours.add((row, column))
 
+        # REMOVE THE INDEX OF THE CURRENT ONE BEING INSPECTED
         Neighbours.remove((r,c))
         return list(Neighbours)
+
+
+# - ----------------------------------  END OF CLASS FUNCTIONS ------------------------------------------- -
+
 #Simple Backtrack Recursive Code
 def SIMPLEBACKTRACK(puzzle):
     global count
@@ -406,7 +437,7 @@ def SIMPLEBACKTRACK(puzzle):
      
         return False
     
-    
+    # SELECT UNASSIGNED VARIABLE
     for row in range(puzzle.rows):
         for column in range(puzzle.columns):
             
@@ -425,12 +456,14 @@ def SIMPLEBACKTRACK(puzzle):
 
     if len(possibleValuesInDomain)!=0:
         count+=len(possibleValuesInDomain)-1
+    # GO Through each value Possible
+    ValueFromRowColumnSatisfied = False
     for value in possibleValuesInDomain:
 
         board = copy.deepcopy(puzzle.board)
         new_puzzle = SudokuPuzzle(possibleValues, filename, board)
         new_puzzle.backtrackAssignment(row, column, value)
-       
+        # IF VALUE IS CONSISTENT GIVEN CONSTRAINTS
         if(not new_puzzle.checkConstraints(row,column)):
             
             continue # assignment was a bad assignment
@@ -466,7 +499,7 @@ def BACKTRACK(puzzle, simple_backtracking=False):
     global count
     global searchcount
 
-    puzzle.updateDomainVariables()
+    # puzzle.updateDomainVariables()
     reached = puzzle.reachedGoal()
     if(reached == None):
         return False
@@ -476,8 +509,9 @@ def BACKTRACK(puzzle, simple_backtracking=False):
         
         return False
     
-    
+    ValueFromRowColumnSatisfied = False
     rowvalues,columnvalues=mrv(puzzle)
+    # We have the first mrv position (rowvalues, columnvalues) on the board, so the following tries to make an assignment to one mrv position on the board
     for row in [rowvalues]:
         for column in [columnvalues]:
             if(puzzle.board[row][column]==0):
@@ -490,7 +524,10 @@ def BACKTRACK(puzzle, simple_backtracking=False):
                     
                     board = copy.deepcopy(puzzle.board)
                     new_puzzle = SudokuPuzzle(possibleValues, filename, board)
+                    
+                    # THIS ASSIGNMENT METHOD ALSO DOES FORWARD CHECKING in the Method updateDomainVariableAfterAssignment(), 
                     new_puzzle.assignment(row, column, value)
+
                     if(not new_puzzle.checkConstraints(row,column)):
                         continue # assignment was a bad assignment
                     
@@ -517,6 +554,7 @@ def AC_3(puzzle, assignedIndex):
         Xi, Xj = Deque[0]
         Deque.popleft()
         if(puzzle.revise(Xi,Xj)):
+            # IF UNASSIGNED VARIABLE SET of DOMAIN VALUES IS EMPTY
             if(puzzle.board[Xi[0]][Xi[1]] ==0 and len(puzzle.variableValuesAvailable[Xi[0]][Xi[1]])==0):
                 return False
             Xi_neighbours = puzzle.findNeighbours(Xi)
@@ -536,7 +574,7 @@ def SolveUsingAC3(puzzle, simple_backtracking=False):
     global count
     global searchcount
    
-    puzzle.updateDomainVariables()
+    # puzzle.updateDomainVariables()
     reached = puzzle.reachedGoal()
     if(reached == None):
         return False
