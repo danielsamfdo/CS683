@@ -452,7 +452,7 @@ def SIMPLEBACKTRACK(puzzle):
 
     ValueFromRowColumnSatisfied = False
     possibleValuesInDomain = puzzle.possibleValues
-
+    # puzzle.possibleValues is always [1,2,...,9]
 
     if len(possibleValuesInDomain)!=0:
         count+=len(possibleValuesInDomain)-1
