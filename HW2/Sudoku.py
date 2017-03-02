@@ -1,14 +1,7 @@
-
-# coding: utf-8
-
-# In[167]:
-
 import copy
 def returnBoard(filename, rows, columns):
-    # SRC: http://stackoverflow.com/questions/3277503/how-to-read-a-file-line-by-line-into-a-list
     with open(filename) as f:
         content = f.readlines()
-        # you may also want to remove whitespace characters like `\n` at the end of each line
         content = [x.split() for x in content] 
     board = []
     for row in range(rows):
@@ -37,9 +30,7 @@ class SudokuPuzzle:
                 self.board = returnBoard(filename,rows,columns)
             else:
                 self.board = board
-            # print "Creating domainVariables"
             self.updateDomainVariables()
-            # print self.domainVariables
             
     def rowAllDiff(self, row):
         dictV = {}
@@ -61,29 +52,134 @@ class SudokuPuzzle:
                     dictV[self.board[row][column]] = 1
         return True
     
+    def updateDomainAfterAssignment(self, rcIndex, value):
+        neighbours = self.findNeighbours(rcIndex)
+        for neighbour in neighbours:
+            nRow, nCol = neighbour
+            if(self.board[nRow][nCol]==0):
+                if(value in self.variableValuesAvailable[nRow][nCol]):
+                    self.variableValuesAvailable[nRow][nCol].remove(value)
+        
+    
+    def boxRemoveColumnAndRowValues(self):
+        boxrowstart=[0,3,6]
+        boxcolstart=[0,3,6]
+        
+        for arrayrowidx in range(3):
+            for arraycolidx in range(3):
+                BoxMap = {}
+                IndicesOfBox = []
+                for i in range(boxrowstart[arrayrowidx],boxrowstart[arrayrowidx]+3):
+                    for j in range(boxcolstart[arraycolidx],boxcolstart[arraycolidx]+3):
+                        IndicesOfBox.append((i,j))
+                        if self.board[i][j]==0:
+                            setValues = copy.deepcopy(self.variableValuesAvailable[i][j])
+                            setValues = frozenset(setValues)
+                            if(setValues not in BoxMap):
+                                
+                                BoxMap[setValues] = [(i,j)]
+                            else:
+                                BoxMap[setValues].append((i,j))
+                for key in BoxMap:
+                    if(len(BoxMap[key]) == len(key) and len(key)==2):
+                        r1,c1 = BoxMap[key][0]
+                        r2,c2 = BoxMap[key][1]
+                        rowOnly = False
+                        colOnly = False
+                        if(r1 == r2):
+                            rowOnly = True
+                        if(c1 == c2):
+                            colOnly = True
+                        for rcIndex in BoxMap[key]:
+                            neighbours = self.findNeighbours(rcIndex)
+                            for neighbour in neighbours:
+                                nRow, nCol = neighbour
+                                if(self.board[nRow][nCol]==0 and (neighbour not in IndicesOfBox)):
+                                    if(rowOnly and nRow == r1):
+                                        for value in key:
+                                            if(value in self.variableValuesAvailable[nRow][nCol]):
+                                                self.variableValuesAvailable[nRow][nCol].remove(value)
+                                    elif(colOnly and nCol == c1):
+                                        for value in key:
+                                            if(value in self.variableValuesAvailable[nRow][nCol]):
+                                                self.variableValuesAvailable[nRow][nCol].remove(value)
+                
     def boxAllDiff(self, r, c):
+        
         dictV = {}
         boxRowStart = self.boxRows*(r/self.boxRows)
         boxColumnStart = self.boxColumns*(c/self.boxColumns)
         boxRowEnd = boxRowStart + self.boxRows
         boxColumnEnd = boxColumnStart + self.boxColumns
-        # print "CHECKING BOX (%d, %d) " %(r,c) 
         for row in range(boxRowStart, boxRowEnd):
             for column in range(boxColumnStart, boxColumnEnd):
-                if(not (row == r and column==c)):
-                    # print (row,column)
-                    if(self.board[row][column] in dictV):
-                        # self.printBoard()
-                        return False
-                    else:
-                        if(self.board[row][column]!=0):
-                            dictV[self.board[row][column]] = 1
+                if(self.board[row][column] in dictV):
+                    return False
+                else:
+                    if(self.board[row][column]!=0):
+                        dictV[self.board[row][column]] = 1
         return True
     
     def checkConstraints(self, row, column):
         toCheckVal = self.board[row][column]
         return self.rowAllDiff(row) and self.columnAllDiff(column) and self.boxAllDiff(row, column)
     
+    def nakedpairs(self):
+        for row in range(self.rows):
+            for k in range(1,10):
+                found=False
+                for column in range(self.columns):
+                    if(self.board[row][column]==k):
+                        found=True
+                        break
+                if found==False:
+                    count=0
+                    for column in range(self.columns):
+                        if(self.board[row][column] == 0 and k in self.variableValuesAvailable[row][column]):
+                            pos=column
+                            count+=1
+                    if count==1:
+                        self.assignment(row,pos,k)
+        for column in range(self.columns):
+            for k in range(1,10):
+                found=False
+                for row in range(self.rows):
+                    if(self.board[row][column]==k):
+                        found=True
+                        break
+                if found==False:
+                    count=0
+                    for row in range(self.rows):
+                        if(self.board[row][column] == 0 and k in self.variableValuesAvailable[row][column]):
+                            pos=row
+                            count+=1
+                    if count==1:
+                        self.assignment(pos,column,k)
+    
+        boxrowstart=[0,3,6]
+        boxcolstart=[0,3,6]
+        for arrayrowidx in range(3):
+            for arraycolidx in range(3):
+                
+                for k in range(1,10):
+                    found=False
+                    for i in range(boxrowstart[arrayrowidx],boxrowstart[arrayrowidx]+3):
+                        for j in range(boxcolstart[arraycolidx],boxcolstart[arraycolidx]+3):
+                            if self.board[i][j]==k:
+                                found=True
+                    if found==False:
+                        count=0
+                        for i in range(boxrowstart[arrayrowidx],boxrowstart[arrayrowidx]+3):
+                            for j in range(boxcolstart[arraycolidx],boxcolstart[arraycolidx]+3):
+                                if self.board[i][j] == 0 and k in self.variableValuesAvailable[i][j]:
+                                    posx,posy=i,j
+                                    count+=1
+                        if count==1:
+                            self.assignment(posx,posy,k)
+                        
+                        
+   
+        
     def reachedGoal(self):
         for row in range(self.rows):
             for column in range(self.columns):
@@ -101,6 +197,9 @@ class SudokuPuzzle:
         self.board[row][column] = value
         self.updateDomainVariables()
     
+    def backtrackAssignment(self, row, column, value):
+        self.board[row][column] = value
+        
     def updateDomainVariables(self):
         domain = {}
         for value in self.possibleValues:
@@ -108,7 +207,6 @@ class SudokuPuzzle:
         boxAvailableValues = []
         rowAvailableValues = []
         columnAvailableValues = []
-        # copy.copy(domain)
         for row in range(self.rows):
             rowAvailableValues.append(copy.deepcopy(domain))
         for column in range(self.columns):
@@ -119,7 +217,6 @@ class SudokuPuzzle:
             boxAvailableValues.append(copy.deepcopy(domain))
             
         variableDomain = []
-        # Add used values 
         for row in range(self.rows):
             variableDomain.append([])
             for column in range(self.columns):
@@ -134,7 +231,6 @@ class SudokuPuzzle:
                     variableDomain[row].append(self.findPositionsPossibleValues(row, column, boxAvailableValues, rowAvailableValues, columnAvailableValues))
                 else:
                     variableDomain[row].append(self.board[row][column])
-        # print variableDomain, boxAvailableValues, rowAvailableValues, columnAvailableValues
         self.variableValuesAvailable = variableDomain
         self.boxValuesAvailable = boxAvailableValues
         self.rowValuesAvailable = rowAvailableValues
@@ -162,7 +258,26 @@ class SudokuPuzzle:
                 if(self.board[row][column]==0):
                     print "Values available for row %d column %d are " %(row, column) 
                     print self.variableValuesAvailable[row][column]
+    
+    def unAssignedValuesCnt(self):
+        unassignedCnt = 0;
+        for row in range(self.rows):
+            for column in range(self.columns):
+                if(self.board[row][column]==0):
+                    unassignedCnt+=1;
+        return unassignedCnt
+    
+    def unAssignedValuesBranchFactor(self):
+        vCnt = 0.0;
+        domLength = 0.0;
+        for row in range(self.rows):
+            for column in range(self.columns):
+                if(self.board[row][column]==0):
+                    domLength += len(self.variableValuesAvailable[row][column])
+                    vCnt += 1
+        return domLength/vCnt;
 
+    
     def reachedFailure(self):
         for row in range(self.rows):
             for column in range(self.columns):
@@ -181,8 +296,6 @@ class SudokuPuzzle:
                     #print "Adding the only elt to the board for %d, %d" %(row,column)
                     self.board[row][column] = list(self.variableValuesAvailable[row][column])[0]
         self.updateDomainVariables()
-        #print "Updated Domain Variables"
-        #print self.variableValuesAvailable
         needToCallAgain = False
         for row in range(self.rows):
             for column in range(self.columns):
@@ -194,100 +307,426 @@ class SudokuPuzzle:
         return
         
                     
-    def OrderedDomainValues(self, row, column):
-        BoxIndex = ((3*(row/3))+(column/3))
-        boxHash = self.boxAvailableValues[BoxIndex]
-        boxValueSet = set({k: v for k, v in boxHash.iteritems() if boxHash[k]==1})
-        rowHash = self.rowAvailableValues[row]
-        rowValueSet = set({k: v for k, v in rowHash.iteritems() if rowHash[k]==1})
-        columnHash = self.columnAvailableValues[column]
-        columnValueSet = set({k: v for k, v in columnHash.iteritems() if columnHash[k]==1})
-        
-        for value in self.variableValuesAvailable[row][column]:
-            value not in self.rowAvailableValues[row] and value not in self.columnAvailableValues[column]
+    def revise(self, Xi, Xj):
+        revised = False
+        row, column = Xi
+        otherRow, otherColumn = Xj
+        if((self.board[row][column])!=0):
+            varValuesAvailbleForXi = [self.board[row][column]]
+        else:
+            varValuesAvailbleForXi = copy.deepcopy(self.variableValuesAvailable[row][column])
+
+        if((self.board[otherRow][otherColumn])!=0):
+            varValuesAvailbleForXj = [self.board[otherRow][otherColumn]]
+        else:
+            varValuesAvailbleForXj = copy.deepcopy(self.variableValuesAvailable[otherRow][otherColumn]) 
+    
+        for valueAvailableForXi in varValuesAvailbleForXi:
+            satisfiedValue = False
             
+            for otherValueAvailableForXj in varValuesAvailbleForXj:
+                if(otherValueAvailableForXj!=valueAvailableForXi):
+                    satisfiedValue = True
+            if(satisfiedValue == False):
+                self.variableValuesAvailable[row][column].remove(valueAvailableForXi)
+                revised = True
+        return revised
+        
+                    
+    def addAllConstraintsAvailable(self):
+        Constraints = []
+        boxRowStart = 0 
+        for boxRow in range(self.boxRows):
+            boxColumnStart = 0
+            for boxColumn in range(self.boxColumns):
+                for value in self.boxValueCombinations(boxRowStart, boxColumnStart):
+                    Constraints.append(value)
+                boxColumnStart+=self.boxColumns
+            boxRowStart += self.boxRows
+        
+        for row in range(self.rows):
+            ColumnVariables = []
+            for column in range(self.columns):
+                ColumnVariables.append((row,column))
+            for value in itertools.combinations(ColumnVariables, 2):
+                Constraints.append(value)
+        
+        for column in range(self.columns):
+            RowVariables = []
+            for row in range(self.rows):
+                RowVariables.append((row,column))
+            for value in itertools.combinations(RowVariables, 2):
+                Constraints.append(value)
+        
+        
+        return Constraints 
+    
+    def boxValueCombinations(self, r, c):
+        boxVariables = []
+        boxRowStart = self.boxRows*(r/self.boxRows)
+        boxColumnStart = self.boxColumns*(c/self.boxColumns)
+        boxRowEnd = boxRowStart + self.boxRows
+        boxColumnEnd = boxColumnStart + self.boxColumns
+        for row in range(boxRowStart, boxRowEnd):
+            for column in range(boxColumnStart, boxColumnEnd):
+                boxVariables.append((row, column))
+        return itertools.combinations(boxVariables, 2)
 
+    def findNeighbours(self, rcInd):
+        r,c = rcInd
+        Neighbours = set()
+        for row in range(self.rows):
+            Neighbours.add((row, c))
+        for column in range(self.columns):
+            Neighbours.add((r, column))
+        
+        boxRowStart = self.boxRows*(r/self.boxRows)
+        boxColumnStart = self.boxColumns*(c/self.boxColumns)
+        boxRowEnd = boxRowStart + self.boxRows
+        boxColumnEnd = boxColumnStart + self.boxColumns
+        for row in range(boxRowStart, boxRowEnd):
+            for column in range(boxColumnStart, boxColumnEnd):
+                Neighbours.add((row, column))
 
-# In[225]:
-
-def BACKTRACKINGSEARCH(puzzle): 
-    return BACKTRACK(puzzle)
-
-def BACKTRACK(puzzle):
-    # print "**********"
-    # puzzle.printBoard()
-    # print "**********"
-    # puzzle.updateBoardAndDomainValues()
+        Neighbours.remove((r,c))
+        return list(Neighbours)
+#Simple Backtrack Recursive Code
+def SIMPLEBACKTRACK(puzzle):
+    global count
+    global searchcount
+   
+    
     reached = puzzle.reachedGoal()
     if(reached == None):
         return False
     if(reached):
-        print "SOLUTION REACHED"
-        puzzle.printBoard()
-        # print puzzle.columnAllDiff(1);
+       
         return puzzle
     if(puzzle.reachedFailure()):
-        print "Failure Reached"
-        puzzle.printBoard()
-        
+     
         return False
     
     
     for row in range(puzzle.rows):
         for column in range(puzzle.columns):
+            
             if(puzzle.board[row][column]==0):
-                print "Reached %d %d Pos" %(row, column)
-                # orderedBestPossibleValues = OrderedDomainValues(puzzle, row, column)
-                puzzle.printAvailableValues()
-                # if(len(puzzle.variableValuesAvailable[row][column])==0):
-                #    return False
+                Row = row
+                Column = column
+                break;
+    row = Row
+    column = Column
+
+                
+
+    ValueFromRowColumnSatisfied = False
+    possibleValuesInDomain = puzzle.possibleValues
+
+
+    if len(possibleValuesInDomain)!=0:
+        count+=len(possibleValuesInDomain)-1
+    for value in possibleValuesInDomain:
+
+        board = copy.deepcopy(puzzle.board)
+        new_puzzle = SudokuPuzzle(possibleValues, filename, board)
+        new_puzzle.backtrackAssignment(row, column, value)
+       
+        if(not new_puzzle.checkConstraints(row,column)):
+            
+            continue # assignment was a bad assignment
+        
+        result = SIMPLEBACKTRACK(new_puzzle)
+        
+        if(result == False):
+            continue
+        else:
+            ValueFromRowColumnSatisfied = True
+            return result
+    if(not ValueFromRowColumnSatisfied):
+        
+        return False
+count=0
+searchcount=0
+#Function to find the unassigned square with smallest domain size 
+def mrv(puzzle):
+    minval=100
+    for row in range(puzzle.rows):
+        for column in range(puzzle.columns):
+            if((puzzle.board[row][column]==0) and len(puzzle.variableValuesAvailable[row][column])<minval ):
+                minval=len(puzzle.variableValuesAvailable[row][column])
+                rowvalue=row
+                columnvalue=column
+    return rowvalue,columnvalue
+
+#MRV Backtrack Algorithm
+def BACKTRACKINGSEARCH(puzzle): 
+    return BACKTRACK(puzzle)
+#MRV Recursive Backtrack Code
+def BACKTRACK(puzzle, simple_backtracking=False):
+    global count
+    global searchcount
+
+    puzzle.updateDomainVariables()
+    reached = puzzle.reachedGoal()
+    if(reached == None):
+        return False
+    if(reached):
+        return puzzle
+    if(puzzle.reachedFailure()):
+        
+        return False
+    
+    
+    rowvalues,columnvalues=mrv(puzzle)
+    for row in [rowvalues]:
+        for column in [columnvalues]:
+            if(puzzle.board[row][column]==0):
+                
                 ValueFromRowColumnSatisfied = False
+                possibleValuesInDomain = puzzle.possibleValues
+                if len(puzzle.variableValuesAvailable[row][column])!=0:
+                    count+=len(puzzle.variableValuesAvailable[row][column])-1
                 for value in puzzle.variableValuesAvailable[row][column]:
-                    board = copy.copy(puzzle.board)
+                    
+                    board = copy.deepcopy(puzzle.board)
                     new_puzzle = SudokuPuzzle(possibleValues, filename, board)
                     new_puzzle.assignment(row, column, value)
-                    print "Assigning position (%d %d) a value of %d" %(row, column, value)
                     if(not new_puzzle.checkConstraints(row,column)):
-                        print "CONSTRAINTS FAILED For value : %d" %(value)
-                        new_puzzle.printBoard()
                         continue # assignment was a bad assignment
-                    # print "value : %d" %(value)
                     
-                    new_puzzle.printBoard()
                     result = BACKTRACK(new_puzzle)
-                    # ValueFromRowColumnSatisfied = result or ValueFromRowColumnSatisfied
                     if(result == False):
                         continue
                     else:
                         ValueFromRowColumnSatisfied = True
                         return result
                 if(not ValueFromRowColumnSatisfied):
-                    print "BackTracking for ROW %d COLUMN %d" %(row, column)
                     return False
-                
-                
-            # inferences ←INFERENCE(csp,var,value) 
-            # if inferences!= failure then
-                # add inferences to assignment
-                # result ← BACKTRACK(assignment, csp) 
-                # if result != failure then
-                #    return result
-        # remove {var = value} and inferences from assignment
-    # return failure
 
+from collections import deque
+import itertools
+#AC3 algorithm
+def AC_3(puzzle, assignedIndex):
+    row, column = assignedIndex
+    result = puzzle.addAllConstraintsAvailable()
 
-# In[228]:
+    Deque = deque()
+    for value in result:
+        Deque.append(value)
+    while(len(Deque)>0):
+        Xi, Xj = Deque[0]
+        Deque.popleft()
+        if(puzzle.revise(Xi,Xj)):
+            if(puzzle.board[Xi[0]][Xi[1]] ==0 and len(puzzle.variableValuesAvailable[Xi[0]][Xi[1]])==0):
+                return False
+            Xi_neighbours = puzzle.findNeighbours(Xi)
+           
+            if(len(Xi_neighbours)>0):
+                for value in (Xi_neighbours):
+                    if(value != Xj):
+                        Deque.append((value, Xi))
+
+    return True
+
+count=0
+searchcount=0
+
+#Recursive Backtrack with AC3 and MRV
+def SolveUsingAC3(puzzle, simple_backtracking=False):
+    global count
+    global searchcount
+   
+    puzzle.updateDomainVariables()
+    reached = puzzle.reachedGoal()
+    if(reached == None):
+        return False
+    if(reached):
+   
+        return puzzle
+    if(puzzle.reachedFailure()):
+    
+        return False
+    
+    rowvalues,columnvalues=mrv(puzzle)
+    for row in [rowvalues]:
+        for column in [columnvalues]:
+            if(puzzle.board[row][column]==0):
+      
+                ValueFromRowColumnSatisfied = False
+                
+                if len(puzzle.variableValuesAvailable[row][column])!=0:
+                    count+=len(puzzle.variableValuesAvailable[row][column])-1
+                for value in puzzle.variableValuesAvailable[row][column]:
+                    
+                    board = copy.deepcopy(puzzle.board)
+                    new_puzzle = SudokuPuzzle(possibleValues, filename, board)
+                    new_puzzle.assignment(row, column, value)
+                    if(not AC_3(new_puzzle, (row, column))):
+                     
+                        continue # assignment was a bad assignment
+                 
+                    result = SolveUsingAC3(new_puzzle)
+                    if(result == False):
+                        continue
+                    else:
+                        ValueFromRowColumnSatisfied = True
+                        return result
+                if(not ValueFromRowColumnSatisfied):
+                    return False
+#Final Waterfall Algorithm
+def WATERFALLSEARCH(puzzle): 
+    return WATERFALL(puzzle)
+
+#Recursive Code for Final Backtrack Algorithm
+def WATERFALL(puzzle, simple_backtracking=False):
+    global count
+    global searchcount
+   
+  
+    puzzle.updateBoardAndDomainValues()
+    puzzle.nakedpairs()
+    puzzle.boxRemoveColumnAndRowValues();
+    reached = puzzle.reachedGoal()
+    if(reached == None):
+        return False
+    if(reached):
+    
+        return puzzle
+    if(puzzle.reachedFailure()):
+        
+        
+        return False
+    
+    rowvalues,columnvalues=mrv(puzzle)
+    for row in [rowvalues]:
+        for column in [columnvalues]:
+            if(puzzle.board[row][column]==0):
+                
+         
+                ValueFromRowColumnSatisfied = False
+                
+                if len(puzzle.variableValuesAvailable[row][column])!=0:
+                    count+=len(puzzle.variableValuesAvailable[row][column])-1
+                for value in puzzle.variableValuesAvailable[row][column]:
+                    
+                    board = copy.deepcopy(puzzle.board)
+                    new_puzzle = SudokuPuzzle(possibleValues, filename, board)
+                    new_puzzle.assignment(row, column, value)
+                    if(not AC_3(new_puzzle, (row, column))):
+                        
+                        continue # assignment was a bad assignment
+
+                    result = WATERFALL(new_puzzle)
+                    if(result == False):
+                        continue
+                    else:
+                        ValueFromRowColumnSatisfied = True
+                        return result
+                if(not ValueFromRowColumnSatisfied):
+                    return False
 
 possibleValues = [1,2,3,4,5,6,7,8,9]
-filename = "sudoku_sample3.txt"
-#filename = "puzzle/puz-001.txt"
-def solveSudoku():
-    puzzle = SudokuPuzzle(possibleValues, filename)
-    # puzzle.printBoard()
-    # puzzle.printAvailableValues()
-#     return puzzle
-    return BACKTRACKINGSEARCH(puzzle)
-    
-puzzle = solveSudoku()
-#puzzle.printBoard()
 
+#Function to call SimpleBacktrack
+def solveSudokuUsingSimplebackTrack(filename):
+    possibleValues = [1,2,3,4,5,6,7,8,9]
+    global count
+    global searchcount
+    count=0
+    searchcount=0
+    puzzle = SudokuPuzzle(possibleValues, filename)
+   
+    
+    return SIMPLEBACKTRACK(puzzle)
+
+#Function to call MRV
+def solveSudokuUsingMRV(filename):
+    possibleValues = [1,2,3,4,5,6,7,8,9]
+    global count
+    global searchcount
+    count=0
+    searchcount=0
+    puzzle = SudokuPuzzle(possibleValues, filename)
+    
+    return BACKTRACKINGSEARCH(puzzle)
+
+#Function to call AC3+MRV
+def solveSudokuUsingAC3(filename):
+    possibleValues = [1,2,3,4,5,6,7,8,9]
+    global count
+    global searchcount
+    count=0
+    searchcount=0
+    puzzle = SudokuPuzzle(possibleValues, filename)
+    return SolveUsingAC3(puzzle)
+
+#Function to call Final Waterfall Model
+def solveSudokuUsingWATERFALL(filename):
+    possibleValues = [1,2,3,4,5,6,7,8,9]
+    global count
+    global searchcount
+    count=0
+    searchcount=0
+    puzzle = SudokuPuzzle(possibleValues, filename)
+    
+    return WATERFALLSEARCH(puzzle)
+
+#Function to display guesscounts
+def countlister(filename):
+    puzzle = solveSudokuUsingSimplebackTrack(filename)
+    puzzle.printBoard()
+    print "GUESSES FOR SIMPLE BACKTRACK = ",count
+    puzzle = solveSudokuUsingMRV(filename)
+    print "GUESSES FOR MRV = ",count
+    puzzle = solveSudokuUsingAC3(filename)
+    print "GUESSES FOR AC3 = ",count
+    puzzle = solveSudokuUsingWATERFALL(filename)
+    print "GUESSES FOR WATERFALL = ",count
+filename=""
+numbers=["puzzle/puz-001.txt","puzzle/puz-002.txt","puzzle/puz-010.txt","puzzle/puz-015.txt","puzzle/puz-025.txt","puzzle/puz-026.txt","puzzle/puz-048.txt","puzzle/puz-051.txt","puzzle/puz-062.txt","puzzle/puz-076.txt","puzzle/puz-081.txt","puzzle/puz-082.txt","puzzle/puz-090.txt","puzzle/puz-095.txt","puzzle/puz-099.txt","puzzle/puz-100.txt"]
+for i in numbers:
+    print i
+    global filename
+    filename=i
+    countlister(i)
+#BONUS: Function to classify difficulty of puzzles
+def diffSolver(filename):
+    puzzle = puzzle = SudokuPuzzle(possibleValues, filename)
+    puzzle.updateBoardAndDomainValues()
+    reached = puzzle.reachedGoal()
+    # puzzle.print
+    if(reached):
+        return filename + "Light and Easy"
+    i = 0
+    while True:
+        unassignedCount = puzzle.unAssignedValuesCnt()
+        puzzle.nakedpairs();
+        puzzle.updateBoardAndDomainValues()
+        if(unassignedCount == puzzle.unAssignedValuesCnt()):
+            break
+    
+    unassignedCount = puzzle.unAssignedValuesCnt()
+    reached = puzzle.reachedGoal()
+    if(reached):
+        return filename + "Moderate"
+    unassignedCount = puzzle.unAssignedValuesCnt()
+  
+    count=0
+    searchcount=0
+    puzzle = SudokuPuzzle(possibleValues, filename)
+    bfFactor = puzzle.unAssignedValuesBranchFactor()
+    print bfFactor*unassignedCount
+    if(bfFactor*unassignedCount <= 125):
+        return "Demanding"
+    puzzle = SolveUsingAC3(puzzle)
+   
+    return "beware! very challenging"
+
+
+
+filename=""
+numbers=["puzzle/puz-001.txt","puzzle/puz-002.txt","puzzle/puz-010.txt","puzzle/puz-015.txt","puzzle/puz-025.txt","puzzle/puz-026.txt","puzzle/puz-048.txt","puzzle/puz-051.txt","puzzle/puz-062.txt","puzzle/puz-076.txt","puzzle/puz-081.txt","puzzle/puz-082.txt","puzzle/puz-090.txt","puzzle/puz-095.txt","puzzle/puz-099.txt","puzzle/puz-100.txt"]
+for i in numbers:
+    print i
+    global filename
+    print diffSolver(i)
