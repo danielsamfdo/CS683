@@ -135,7 +135,7 @@ class SudokuPuzzle:
         toCheckVal = self.board[row][column]
         return self.rowAllDiff(row) and self.columnAllDiff(column) and self.boxAllDiff(row, column)
     
-    def nakedpairs(self):
+    def uniquevalue(self):
         for row in range(self.rows):
             for k in range(1,10):
                 found=False
@@ -622,7 +622,7 @@ def WATERFALL(puzzle, simple_backtracking=False):
    
   
     puzzle.updateBoardAndDomainValues()
-    puzzle.nakedpairs()
+    puzzle.uniquevalue()
     puzzle.boxRemoveColumnAndRowValues();
     reached = puzzle.reachedGoal()
     if(reached == None):
@@ -742,7 +742,7 @@ def diffSolver(filename):
     i = 0
     while True:
         unassignedCount = puzzle.unAssignedValuesCnt()
-        puzzle.nakedpairs();
+        puzzle.uniquevalue();
         puzzle.updateBoardAndDomainValues()
         if(unassignedCount == puzzle.unAssignedValuesCnt()):
             break
